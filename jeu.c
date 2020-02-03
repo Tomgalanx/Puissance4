@@ -15,6 +15,7 @@
 
 #define TEMPS 5		// temps de calcul pour un coup avec MCTS (en secondes)
 
+
 // macros
 #define AUTRE_JOUEUR(i) (1-(i))
 #define min(a, b)       ((a) < (b) ? (a) : (b))
@@ -25,7 +26,14 @@
 #define LIGNE 6
 #define COL 7
 
+#define HUMAIN 0
+#define ORDI 1
+
+
 #define LEN(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
+
+// Constante C
+#define C sqrt(2)
 
 // Critères de fin de partie
 typedef enum {NON, MATCHNUL, ORDI_GAGNE, HUMAIN_GAGNE } FinDePartie;
@@ -214,11 +222,24 @@ typedef struct NoeudSt {
 	// POUR MCTS:
 	int nb_victoires;
 	int nb_simus;
+	double R;
 	
 } Noeud;
 
 
-// Créer un nouveau noeud en jouant un coup à partir d'un parent 
+Noeud *selectionneNoeud(Noeud *pSt);
+
+Noeud *developperNoeud(Noeud *pSt);
+
+FinDePartie simulation(Etat *pSt);
+
+void retropropagation(Noeud *pSt, FinDePartie result);
+
+double bValeur(Noeud *pSt);
+
+Coup *trouverNoeudMeilleurCoup(Noeud *pSt);
+
+// Créer un nouveau noeud en jouant un coup à partir d'un parent
 // utiliser nouveauNoeud(NULL, NULL) pour créer la racine
 Noeud * nouveauNoeud (Noeud * parent, Coup * coup ) {
 	Noeud * noeud = (Noeud *)malloc(sizeof(Noeud));
@@ -239,7 +260,8 @@ Noeud * nouveauNoeud (Noeud * parent, Coup * coup ) {
 	
 	// POUR MCTS:
 	noeud->nb_victoires = 0;
-	noeud->nb_simus = 0;	
+	noeud->nb_simus = 0;
+	noeud->R=0;
 	
 
 	return noeud; 	
@@ -322,6 +344,170 @@ FinDePartie testFin( Etat * etat ) {
 		
 	return NON;
 }
+/*
+ * Sélectionne récursivement à partir de la racine le nœud avec la plus grande B-valeur
+ * jusqu’à arriver à un nœud terminal
+ * ou un dont tous les fils n’ont pas été développés
+ */
+Noeud *selectionneNoeud(Noeud *pSt) {
+
+    Noeud * noeudRecursif = pSt;
+
+
+    // TODO NOMBRE D'iteration max et confidion LEN
+    // Si le nœud est terminal ou tous les fils n’ont pas été développés
+    if(testFin(noeudRecursif->etat) != NON ||noeudRecursif->nb_enfants != LEN(coups_possibles(noeudRecursif->etat))){
+        return noeudRecursif;
+    }
+    // Sinon on choisi le noeud avec la plus grande B-valeur
+    else{
+
+        // On initialise les valeurs max avec les premiers enfants
+        Noeud * noeudMax = noeudRecursif->enfants[0];
+        double bValeurMax = bValeur(noeudMax);
+
+
+        // Variable temporaire
+        double varBvaleur;
+        Noeud * noeud;
+        int i;
+        // Boucle pour parcourire tous les enfants
+        for(i =1;i<noeudRecursif->nb_enfants;i++){
+            // On récupere le noeud
+            noeud = noeudRecursif->enfants[i];
+            // la bvaleur
+            varBvaleur = bValeur(noeud);
+
+            // Si la nouvelle bValeur est plus grande, on change les max
+            if(max(varBvaleur,bValeurMax) == varBvaleur){
+                noeudMax=noeud;
+                bValeurMax=varBvaleur;
+            }
+        }
+
+        // On continue jusqu'a trouver un cas terminal
+        return selectionneNoeud(noeudMax);
+    }
+}
+
+double bValeur(Noeud *pSt) {
+
+    // + si parent(i) est un noeud max, - si parent(i) est un noeud min
+    int mu=pSt->R/pSt->nb_simus;
+
+    if(pSt->parent->joueur == ORDI)
+        mu=-1*(pSt->R+pSt->nb_simus);
+
+    // Nombre de simulation
+    int nParent=pSt->parent->nb_simus;
+    int n=pSt->nb_simus;
+
+
+
+    int res = mu + C * sqrt(log(nParent)/n);
+    return res;
+}
+
+/*
+ * Développer un fils choisi aléatoirement parmi les fils non développés
+ */
+Noeud *developperNoeud(Noeud *pSt) {
+
+    /*
+     * Expansion: si cette feuille n'est pas finale,
+     * créer un enfant (ou plusieurs) en utilisant les règles du jeu
+     * et choisir l'un des enfants.
+     *
+     * WIKIPEDIA
+     */
+
+
+    if (testFin(pSt->etat) != NON)
+        return pSt;
+    else{
+
+        Coup ** coups=coups_possibles(pSt->etat);
+
+        // On enleve tous les coups deja developpés
+        //TODO
+        int i;
+        for(i=0;i<LEN(coups);i++){
+            int j;
+            for(j=0; j<pSt->nb_enfants;j++){
+
+                // Si le coups est deja developpé, on le supprime
+                if(coups[i]->colonne == pSt->enfants[j]->coup->colonne)
+                    coups[i]=NULL;
+            }
+        }
+
+
+        int random = rand() % LEN(coups);
+
+        while(coups[random] == NULL)
+            random = rand() % LEN(coups);
+
+        return ajouterEnfant(pSt,coups[random]);
+    }
+}
+
+
+/*
+ *  Simuler la fin de la partie avec une marche aléatoire
+ */
+FinDePartie simulation(Etat *pSt) {
+
+    // TODO CHOISIR COUP GAGNANT
+    /*
+     * Simulation: simuler une exécution d'une partie au hasard depuis cet enfant,
+     * jusqu'à atteindre une configuration finale
+     *
+     * WIKIPEDIA
+     */
+
+    // Tant que la partie n'est pas terminée
+    while(testFin(pSt) == NON){
+
+        Coup** listeCoups = coups_possibles(pSt);
+        Coup* coup = NULL;
+
+        int k = 0;
+        while (listeCoups[k] != NULL)
+            k++;
+        coup = listeCoups[rand() % k];
+
+        jouerCoup(pSt,coup);
+    }
+
+    return testFin(pSt);
+}
+
+/*
+ * Mettre à jour les B-valeurs de tous les nœuds sur le chemin de la racine au nœud terminal
+ * en remontant la récompense r de la position finale
+ */
+void retropropagation(Noeud *pSt, FinDePartie result) {
+
+    //TODO
+    while (pSt != NULL) {
+        pSt->nb_simus++;
+        switch(result) {
+            case ORDI_GAGNE :
+                pSt->nb_victoires++;
+                pSt->R += 1;
+                break;
+            case HUMAIN_GAGNE :
+                pSt->R += 0;
+                break;
+            case MATCHNUL :
+                pSt->R += 0.5;
+                break;
+            default:
+                break;
+        }
+        pSt = pSt->parent;
+    }
+}
 
 
 
@@ -351,29 +537,41 @@ void ordijoue_mcts(Etat * etat, int tempsmax) {
 	
 	
 	meilleur_coup = coups[ rand()%k ]; // choix aléatoire
-	
+
 	/*  TODO :
 		- supprimer la sélection aléatoire du meilleur coup ci-dessus
 		- implémenter l'algorithme MCTS-UCT pour déterminer le meilleur coup ci-dessous
+	 */
 
 	int iter = 0;
 	
 	do {
+		// à compléter par l'algorithme MCTS-UCT...
+
+		// On choisit le noeud
+		Noeud * noeud = selectionneNoeud(racine);
+
+		// Expansion du noeud
+		enfant = developperNoeud(noeud);
+
+
+		// Simule l'execution d'une partie
+		// on copie l'etat
+		Etat * nouvelleEtat = copieEtat(enfant->etat);
+
+		FinDePartie result = simulation(nouvelleEtat);
 	
-	
-	
-		// à compléter par l'algorithme MCTS-UCT... 
-	
-	
+
+		// Rétropropagation (Backpropagation)
+		retropropagation(enfant,result);
 	
 	
 		toc = clock(); 
 		temps = (int)( ((double) (toc - tic)) / CLOCKS_PER_SEC );
 		iter ++;
-	} while ( temps < tempsmax );
-	
-	/* fin de l'algorithme  */ 
-	
+	} while ( temps < tempsmax);
+
+	meilleur_coup = trouverNoeudMeilleurCoup(racine);
 	// Jouer le meilleur premier coup
 	jouerCoup(etat, meilleur_coup );
 	
@@ -381,6 +579,27 @@ void ordijoue_mcts(Etat * etat, int tempsmax) {
 	freeNoeud(racine);
 	free (coups);
 }
+
+Coup *trouverNoeudMeilleurCoup(Noeud *pSt) {
+
+    // TODO MODIFICATION
+
+    Noeud * noeudMeilleurCoup = pSt->enfants[0];
+    int i = 1, maxSimus;
+    double maxValeurs, valeurCourante;
+
+            maxSimus = noeudMeilleurCoup->nb_simus;
+
+            for (i = 1 ; i < pSt->nb_enfants ; i++) {
+                if (maxSimus < pSt->enfants[i]->nb_simus) {
+                    noeudMeilleurCoup = pSt->enfants[i];
+                    maxSimus = noeudMeilleurCoup->nb_simus;
+                }
+            }
+
+    return noeudMeilleurCoup;
+}
+
 
 int main(void) {
 
