@@ -654,7 +654,8 @@ void ordijoue_mcts(Etat * etat, int tempsmax, bool estMax) {
     // Jouer le meilleur premier coup
     jouerCoup(etat, meilleur_coup );
 
-    printf("Probabilité de victoire de l'ordinateur : %.2f ",(double)noeud_coup->nb_victoires/noeud_coup->nb_simus * 100);
+    printf("Probabilité de victoire de l'ordinateur : %.2f \n",(double)noeud_coup->nb_victoires/noeud_coup->nb_simus * 100);
+    printf("Nombre de simulations réalisées : %d \n",racine->nb_simus);
 
     // Penser à libérer la mémoire :
     freeNoeud(racine);
@@ -706,7 +707,7 @@ Noeud * trouverNoeud(Noeud *pSt,bool max) {
             maxRatio = 0;
         }
         else {
-            maxRatio = noeudMeilleurCoup->R / noeudMeilleurCoup->nb_simus;
+            maxRatio = (double)noeudMeilleurCoup->R / noeudMeilleurCoup->nb_simus;
         }
 
 
@@ -721,7 +722,7 @@ Noeud * trouverNoeud(Noeud *pSt,bool max) {
 
                 // Sinon on calcule le ration récompense, nombre de simulation
             else
-                noeudCalcule = pSt->enfants[i]->R / pSt->enfants[i]->nb_simus;
+                noeudCalcule = (double)pSt->enfants[i]->R / pSt->enfants[i]->nb_simus;
 
             // S'il faut mettre a jour les max
             if (maxRatio < noeudCalcule) {
