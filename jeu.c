@@ -588,7 +588,7 @@ void retropropagation(Noeud *pSt, FinDePartie result) {
 
 // Calcule et joue un coup de l'ordinateur avec MCTS-UCT
 // en tempsmax secondes
-void ordijoue_mcts(Etat * etat, int tempsmax) {
+void ordijoue_mcts(Etat * etat, int tempsmax, bool estMax) {
 
     clock_t tic, toc;
     tic = clock();
@@ -649,9 +649,12 @@ void ordijoue_mcts(Etat * etat, int tempsmax) {
         iter ++;
     } while ( temps < tempsmax);
 
-    meilleur_coup = trouverNoeud(racine,true)->coup;
+    Noeud * noeud_coup = trouverNoeud(racine,estMax);
+    meilleur_coup = noeud_coup->coup;
     // Jouer le meilleur premier coup
     jouerCoup(etat, meilleur_coup );
+
+    printf("Probabilité de victoire de l'ordinateur : %.2f ",(double)noeud_coup->nb_victoires/noeud_coup->nb_simus * 100);
 
     // Penser à libérer la mémoire :
     freeNoeud(racine);
@@ -761,7 +764,8 @@ int main(void) {
         else {
             // tour de l'Ordinateur
 
-            ordijoue_mcts( etat, TEMPS );
+            ordijoue_mcts( etat, TEMPS,true );
+
 
         }
 
