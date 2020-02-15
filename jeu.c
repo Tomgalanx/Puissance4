@@ -15,7 +15,7 @@
 // Paramètres du jeu
 #define LARGEUR_MAX 9 		// nb max de fils pour un noeud (= nb max de coups possibles)
 
-#define TEMPS 5		// temps de calcul pour un coup avec MCTS (en secondes)
+#define TEMPS 1		// temps de calcul pour un coup avec MCTS (en secondes)
 
 
 // macros
@@ -158,9 +158,6 @@ Coup * demanderCoup () {
 int jouerCoup( Etat * etat, Coup * coup ) {
 
 
-
-
-
     // variable pour trouver la prochaine ligne dispo
     int ligneDispo=-1;
 
@@ -175,7 +172,7 @@ int jouerCoup( Etat * etat, Coup * coup ) {
         if (etat->plateau[compteur][coup->colonne]== ' ')
             ligneDispo = compteur;
 
-        // Sinon on remonte d'une ligne
+            // Sinon on remonte d'une ligne
         else
             compteur--;
     }
@@ -236,6 +233,8 @@ typedef struct NoeudSt {
     // POUR MCTS:
     int nb_victoires;
     int nb_simus;
+
+    // Récompense
     double R;
 
 } Noeud;
@@ -259,6 +258,7 @@ Coup ** decalageTab(Coup **coups,int indice);
 // Créer un nouveau noeud en jouant un coup à partir d'un parent
 // utiliser nouveauNoeud(NULL, NULL) pour créer la racine
 Noeud * nouveauNoeud (Noeud * parent, Coup * coup ) {
+
     Noeud * noeud = (Noeud *)malloc(sizeof(Noeud));
 
     if ( parent != NULL && coup != NULL ) {
@@ -664,6 +664,8 @@ void ordijoue_mcts(Etat * etat, int tempsmax, bool estMax) {
 
 Noeud * trouverNoeud(Noeud *pSt,bool max) {
 
+
+    // TODO ROBUSTE NE FONCTIONNE PAS
 
     Noeud*noeudMeilleurCoup = NULL;
 
