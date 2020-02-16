@@ -1,0 +1,12 @@
+2. L'ordinateur nous bat à tous les coups à partir de 1 seconde.
+
+
+4. Je n'ai pas trouvé d'option O3 ou 03 dans le gcc -help,
+il n'y a que l'option -o qui permet de sortir l'affichage dans un fichier
+
+
+5. La règle max compare les recompenses et la règle robuste compare le nombre de simulations.
+Au début, les coups sont assez similaires mais par la suite la méthode robuste developpe des coups pour gagner rapidement
+alors que la méthode max à tendance à essayer de bloquer le joueur que de developper une technique pour la victoire.
+
+La règle ROBUSTE semble etre la plus efficace, en temps et en pourcentage de victoire.

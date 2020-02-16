@@ -235,10 +235,12 @@ typedef struct NoeudSt {
     int nb_simus;
 
     // Récompense
-    double R;
+    float R;
 
 } Noeud;
 
+
+// Toutes les nouvelles méthodes
 
 Noeud *selectionneNoeud(Noeud *pSt);
 
@@ -249,9 +251,10 @@ FinDePartie simulation(Etat *pSt);
 void retropropagation(Noeud *pSt, FinDePartie result);
 
 double bValeur(Noeud *pSt);
+
 Noeud *trouverNoeud(Noeud *pSt,bool max);
 
-int nombre_coups_possible(Etat *pSt);
+int coups_restant(Etat *pSt);
 
 Coup ** decalageTab(Coup **coups,int indice);
 
@@ -373,8 +376,9 @@ Noeud *selectionneNoeud(Noeud *pSt) {
     Noeud * noeudRecursif = pSt;
 
 
+    // test de fin de la recursion
     // Si le nœud est terminal ou tous les fils n’ont pas été développés
-    if(testFin(noeudRecursif->etat) != NON ||noeudRecursif->nb_enfants != nombre_coups_possible(noeudRecursif->etat)){
+    if(testFin(noeudRecursif->etat) != NON || noeudRecursif->nb_enfants != coups_restant(noeudRecursif->etat)){
         return noeudRecursif;
     }
         // Sinon on choisi le noeud avec la plus grande B-valeur
@@ -388,9 +392,8 @@ Noeud *selectionneNoeud(Noeud *pSt) {
         // Variable temporaire
         double varBvaleur;
         Noeud * noeud;
-        int i;
         // Boucle pour parcourire tous les enfants
-        for(i =1;i<noeudRecursif->nb_enfants;i++){
+        for(int i =1;i<noeudRecursif->nb_enfants;i++){
             // On récupere le noeud
             noeud = noeudRecursif->enfants[i];
             // la bvaleur
@@ -408,8 +411,8 @@ Noeud *selectionneNoeud(Noeud *pSt) {
     }
 }
 
-// Compte le nombre de coups possible pour un etat
-int nombre_coups_possible(Etat *pSt) {
+// Compte le nombre de coups restant pour un etat
+int coups_restant(Etat *pSt) {
 
     int compteur = 0;
 
@@ -426,18 +429,18 @@ int nombre_coups_possible(Etat *pSt) {
 double bValeur(Noeud *pSt) {
 
 
-    // si le noeud n'a pas encore de simulation
+    // si le noeud n'a pas encore de simulation, on lui donne un grand B-valeur
     if (pSt->nb_simus==0 )
-        return DBL_MAX;
+        return 999999999;
 
     // moyenne de la récompense r(s) sur l’ensemble des simulations s passant par i
     double moyenne;
 
     // + si parent(i) est un nœud Max, − si Min
     if (pSt->parent->joueur == ORDI)
-        moyenne= -1*((double)pSt->R/pSt->nb_simus);
+        moyenne= -1*((float)pSt->R/pSt->nb_simus);
     else
-        moyenne = (double)pSt->R/pSt->nb_simus;
+        moyenne = (float)pSt->R/pSt->nb_simus;
 
     return moyenne+C*sqrt(log(pSt->parent->nb_simus)/pSt->nb_simus);
 
@@ -445,6 +448,7 @@ double bValeur(Noeud *pSt) {
 
 /*
  * Développer un fils choisi aléatoirement parmi les fils non développés
+ * ARCHE
  */
 Noeud *developperNoeud(Noeud *pSt) {
 
@@ -516,6 +520,7 @@ Coup ** decalageTab(Coup **coups,int indice) {
 
 /*
  *  Simuler la fin de la partie avec une marche aléatoire
+ *  ARCHE
  */
 FinDePartie simulation(Etat *pSt) {
 
@@ -538,7 +543,7 @@ FinDePartie simulation(Etat *pSt) {
         Coup* nouveauCoup = NULL;
 
 
-        int k = nombre_coups_possible(pSt);
+        int k = coups_restant(pSt);
 
         nouveauCoup = listeCoups[rand() % k];
 
@@ -654,7 +659,7 @@ void ordijoue_mcts(Etat * etat, int tempsmax, bool estMax) {
     // Jouer le meilleur premier coup
     jouerCoup(etat, meilleur_coup );
 
-    printf("Probabilité de victoire de l'ordinateur : %.2f \n",(double)noeud_coup->nb_victoires/noeud_coup->nb_simus * 100);
+    printf("Probabilité de victoire de l'ordinateur : %.2f \n",(float)noeud_coup->nb_victoires/noeud_coup->nb_simus * 100);
     printf("Nombre de simulations réalisées : %d \n",racine->nb_simus);
 
     // Penser à libérer la mémoire :
@@ -665,42 +670,16 @@ void ordijoue_mcts(Etat * etat, int tempsmax, bool estMax) {
 Noeud * trouverNoeud(Noeud *pSt,bool max) {
 
 
-    // TODO ROBUSTE NE FONCTIONNE PAS
-
-    Noeud*noeudMeilleurCoup = NULL;
+    Noeud* noeudMeilleurCoup = NULL;
 
 
-    // Si la regle est ROBUSTE
-    if (!max) {
-
-        // soit le nombre de simulations N(i) (règle "robuste")
-
-        // On initialise le premier noeud max
-        int maxSimulation = noeudMeilleurCoup->nb_simus;
-
-        noeudMeilleurCoup = pSt->enfants[0];
-
-        // On parcourt tous les noeuds
-        for (int i = 1; i < pSt->nb_enfants; i++) {
-
-            // On regarde le nombre de simulation
-            if (max(maxSimulation,pSt->enfants[i]->nb_simus) == pSt->enfants[i]->nb_simus) {
-
-                // Si le nombre de simulation est plus grand, alors on met a jour le max
-                noeudMeilleurCoup = pSt->enfants[i];
-                maxSimulation = noeudMeilleurCoup->nb_simus;
-            }
-        }
-    }
-
-        // Si la regle est MAX
-    else{
+    // Si la regle est max
+    if (max) {
 
         // soit la récompense attendue μ(i) (règle "max")
 
 
         double maxRatio;
-
         noeudMeilleurCoup = pSt->enfants[0];
 
 
@@ -709,7 +688,7 @@ Noeud * trouverNoeud(Noeud *pSt,bool max) {
             maxRatio = 0;
         }
         else {
-            maxRatio = (double)noeudMeilleurCoup->R / noeudMeilleurCoup->nb_simus;
+            maxRatio = (double) noeudMeilleurCoup->R / noeudMeilleurCoup->nb_simus;
         }
 
 
@@ -722,7 +701,7 @@ Noeud * trouverNoeud(Noeud *pSt,bool max) {
             if (pSt->enfants[i]->nb_simus == 0)
                 noeudCalcule = 0;
 
-                // Sinon on calcule le ration récompense, nombre de simulation
+                // Sinon on calcule le ratio récompense, nombre de simulation
             else
                 noeudCalcule = (double)pSt->enfants[i]->R / pSt->enfants[i]->nb_simus;
 
@@ -731,6 +710,32 @@ Noeud * trouverNoeud(Noeud *pSt,bool max) {
 
                 noeudMeilleurCoup = pSt->enfants[i];
                 maxRatio = noeudCalcule;
+            }
+        }
+
+    }
+
+        // Si la regle est robuste
+    else{
+
+        // soit le nombre de simulations N(i) (règle "robuste")
+
+        // On initialise le premier noeud max
+        noeudMeilleurCoup = pSt->enfants[0];
+        int maxSimulation = noeudMeilleurCoup->nb_simus;
+
+
+
+        // On parcourt tous les noeuds
+        for (int i = 1; i < pSt->nb_enfants; i++) {
+
+
+            // On regarde le nombre de simulation
+            if (maxSimulation < pSt->enfants[i]->nb_simus) {
+
+                // Si le nombre de simulation est plus grand, alors on met a jour le max
+                noeudMeilleurCoup = pSt->enfants[i];
+                maxSimulation = noeudMeilleurCoup->nb_simus;
             }
         }
     }
@@ -767,7 +772,7 @@ int main(void) {
         else {
             // tour de l'Ordinateur
 
-            ordijoue_mcts( etat, TEMPS,true );
+            ordijoue_mcts( etat, TEMPS,false );
 
 
         }
